@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AiSerena — AI Image Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Righteous&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pink: #FF3CAC;
+    --orange: #FF9A3C;
+    --yellow: #FFE03C;
+    --cyan: #3CEFFF;
+    --purple: #784BA0;
+    --dark: #0D0D0D;
+    --card: #161616;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--dark);
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 48px;
+    backdrop-filter: blur(16px);
+    background: rgba(13,13,13,0.7);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .logo {
+    font-family: 'Righteous', cursive;
+    font-size: 24px;
+    background: linear-gradient(90deg, var(--pink), var(--orange), var(--yellow));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .nav-btn {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 100px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .nav-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(255,60,172,0.4);
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 120px 24px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-glow {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.25;
+    pointer-events: none;
+  }
+
+  .glow-pink { background: var(--pink); top: -100px; left: -100px; }
+  .glow-cyan { background: var(--cyan); bottom: -100px; right: -100px; }
+  .glow-yellow { background: var(--yellow); top: 50%; left: 50%; transform: translate(-50%,-50%); opacity: 0.1; }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 100px;
+    padding: 8px 20px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 32px;
+    animation: fadeUp 0.8s ease both;
+  }
+
+  .badge-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  h1 {
+    font-family: 'Righteous', cursive;
+    font-size: clamp(52px, 10vw, 100px);
+    line-height: 1;
+    margin-bottom: 24px;
+    animation: fadeUp 0.8s 0.1s ease both;
+  }
+
+  .h1-line1 { display: block; color: #fff; }
+  .h1-line2 {
+    display: block;
+    background: linear-gradient(90deg, var(--pink), var(--orange), var(--yellow));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: 18px;
+    color: rgba(255,255,255,0.55);
+    max-width: 480px;
+    line-height: 1.7;
+    margin-bottom: 48px;
+    font-weight: 300;
+    animation: fadeUp 0.8s 0.2s ease both;
+  }
+
+  .hero-cta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    animation: fadeUp 0.8s 0.3s ease both;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--pink), var(--orange));
+    color: #fff;
+    border: none;
+    padding: 16px 40px;
+    border-radius: 100px;
+    font-size: 16px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 24px rgba(255,60,172,0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(255,60,172,0.5);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 16px 40px;
+    border-radius: 100px;
+    font-size: 16px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .btn-ghost:hover {
+    border-color: rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.05);
+  }
+
+  /* FLOATING IMAGES */
+  .hero-images {
+    margin-top: 72px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    animation: fadeUp 0.8s 0.4s ease both;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .img-card {
+    border-radius: 20px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.08);
+    transition: transform 0.3s;
+  }
+
+  .img-card:hover { transform: translateY(-8px) rotate(1deg); }
+  .img-card:nth-child(2) { transform: translateY(-16px); }
+  .img-card:nth-child(2):hover { transform: translateY(-24px) rotate(-1deg); }
+
+  .img-card img {
+    width: 180px;
+    height: 220px;
+    object-fit: cover;
+    display: block;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+  }
+
+  .img-placeholder {
+    width: 180px;
+    height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    gap: 8px;
+  }
+
+  .img-placeholder span {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .p1 { background: linear-gradient(135deg, #2d1b69, #11998e); }
+  .p2 { background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045); }
+  .p3 { background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); }
+
+  /* HOW IT WORKS */
+  .section {
+    padding: 100px 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, var(--cyan), var(--pink));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .section-title {
+    font-family: 'Righteous', cursive;
+    font-size: clamp(32px, 5vw, 52px);
+    text-align: center;
+    margin-bottom: 64px;
+    line-height: 1.2;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+
+  .step-card {
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 24px;
+    padding: 40px 32px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s, border-color 0.3s;
+  }
+
+  .step-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+    border-radius: 24px;
+  }
+
+  .step-card:nth-child(1)::before { background: linear-gradient(135deg, rgba(255,60,172,0.08), transparent); }
+  .step-card:nth-child(2)::before { background: linear-gradient(135deg, rgba(255,154,60,0.08), transparent); }
+  .step-card:nth-child(3)::before { background: linear-gradient(135deg, rgba(60,239,255,0.08), transparent); }
+
+  .step-card:hover { transform: translateY(-6px); border-color: rgba(255,255,255,0.15); }
+  .step-card:hover::before { opacity: 1; }
+
+  .step-num {
+    font-family: 'Righteous', cursive;
+    font-size: 64px;
+    line-height: 1;
+    margin-bottom: 20px;
+    opacity: 0.15;
+    position: absolute;
+    top: 24px;
+    right: 32px;
+  }
+
+  .step-icon {
+    font-size: 40px;
+    margin-bottom: 20px;
+    display: block;
+  }
+
+  .step-card h3 {
+    font-family: 'Righteous', cursive;
+    font-size: 22px;
+    margin-bottom: 12px;
+    color: #fff;
+  }
+
+  .step-card p {
+    color: rgba(255,255,255,0.5);
+    line-height: 1.7;
+    font-size: 15px;
+    font-weight: 300;
+  }
+
+  /* GALLERY */
+  .gallery-section {
+    padding: 100px 24px;
+    background: linear-gradient(180deg, transparent, rgba(255,60,172,0.03), transparent);
+  }
+
+  .gallery-grid {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+
+  .gallery-item {
+    border-radius: 20px;
+    overflow: hidden;
+    aspect-ratio: 3/4;
+    position: relative;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: transform 0.3s;
+  }
+
+  .gallery-item:hover { transform: scale(1.03); }
+
+  .gallery-item:nth-child(3) { grid-row: span 2; aspect-ratio: unset; }
+
+  .gallery-bg {
+    width: 100%;
+    height: 100%;
+    min-height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    position: relative;
+  }
+
+  .g1 { background: linear-gradient(135deg, #667eea, #764ba2); }
+  .g2 { background: linear-gradient(135deg, #f093fb, #f5576c); }
+  .g3 { background: linear-gradient(135deg, #4facfe, #00f2fe); min-height: 500px; }
+  .g4 { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+  .g5 { background: linear-gradient(135deg, #fa709a, #fee140); }
+  .g6 { background: linear-gradient(135deg, #a18cd1, #fbc2eb); }
+
+  .gallery-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+    display: flex;
+    align-items: flex-end;
+    padding: 20px;
+  }
+
+  .gallery-item:hover .gallery-overlay { opacity: 1; }
+
+  .gallery-prompt {
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+    line-height: 1.4;
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 60px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: gap;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .footer-logo {
+    font-family: 'Righteous', cursive;
+    font-size: 28px;
+    background: linear-gradient(90deg, var(--pink), var(--orange), var(--yellow));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
+
+  .footer-links a {
+    color: rgba(255,255,255,0.4);
+    text-decoration: none;
+    font-size: 14px;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover { color: #fff; }
+
+  .footer-copy {
+    color: rgba(255,255,255,0.25);
+    font-size: 13px;
+  }
+
+  /* CTA SECTION */
+  .cta-section {
+    padding: 100px 24px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-box {
+    max-width: 700px;
+    margin: 0 auto;
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 32px;
+    padding: 72px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-box::before {
+    content: '';
+    position: absolute;
+    top: -100px; left: -100px;
+    width: 300px; height: 300px;
+    background: var(--pink);
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.15;
+  }
+
+  .cta-box::after {
+    content: '';
+    position: absolute;
+    bottom: -100px; right: -100px;
+    width: 300px; height: 300px;
+    background: var(--cyan);
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.1;
+  }
+
+  .cta-box h2 {
+    font-family: 'Righteous', cursive;
+    font-size: clamp(28px, 5vw, 44px);
+    margin-bottom: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .cta-box p {
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 40px;
+    font-size: 16px;
+    font-weight: 300;
+    position: relative;
+    z-index: 1;
+  }
+
+  .cta-box .btn-primary { position: relative; z-index: 1; font-size: 18px; padding: 18px 48px; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 600px) {
+    nav { padding: 16px 20px; }
+    .img-card img, .img-placeholder { width: 130px; height: 160px; }
+    footer { padding: 40px 20px; }
+    .cta-box { padding: 48px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">AiSerena</div>
+  <a href="https://huggingface.co/spaces/Sadikaydin/AiSerena1" target="_blank" class="nav-btn">Try Free →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow glow-pink"></div>
+  <div class="hero-glow glow-cyan"></div>
+  <div class="hero-glow glow-yellow"></div>
+
+  <div class="hero-badge">
+    <span class="badge-dot"></span>
+    AI-Powered Image Generation
+  </div>
+
+  <h1>
+    <span class="h1-line1">Create Stunning</span>
+    <span class="h1-line2">AI Artwork</span>
+  </h1>
+
+  <p class="hero-sub">
+    Type anything you imagine — AiSerena turns your words into breathtaking images in seconds. No skills required.
+  </p>
+
+  <div class="hero-cta">
+    <a href="https://huggingface.co/spaces/Sadikaydin/AiSerena1" target="_blank" class="btn-primary">Start Creating Free</a>
+    <a href="#how" class="btn-ghost">See How It Works</a>
+  </div>
+
+  <div class="hero-images">
+    <div class="img-card">
+      <div class="img-placeholder p1">🌌<span>Galaxy</span></div>
+    </div>
+    <div class="img-card">
+      <div class="img-placeholder p2">🌸<span>Portrait</span></div>
+    </div>
+    <div class="img-card">
+      <div class="img-placeholder p3">🏔️<span>Landscape</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <p class="section-label">Simple as 1-2-3</p>
+  <h2 class="section-title">How It Works</h2>
+  <div class="steps">
+    <div class="step-card">
+      <span class="step-num">01</span>
+      <span class="step-icon">✍️</span>
+      <h3>Describe Your Vision</h3>
+      <p>Type a description of the image you want — a landscape, a portrait, an abstract scene. The more detail, the better.</p>
+    </div>
+    <div class="step-card">
+      <span class="step-num">02</span>
+      <span class="step-icon">⚡</span>
+      <h3>AI Does the Magic</h3>
+      <p>Our powerful AI model processes your prompt and generates a unique, high-quality image just for you in seconds.</p>
+    </div>
+    <div class="step-card">
+      <span class="step-num">03</span>
+      <span class="step-icon">💾</span>
+      <h3>Download & Share</h3>
+      <p>Love what you see? Download your image instantly and share it with the world. It's yours, completely free.</p>
+    </div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<div class="gallery-section">
+  <div style="max-width:1100px; margin: 0 auto 48px; text-align:center;">
+    <p class="section-label">Explore Possibilities</p>
+    <h2 class="section-title">Created with AiSerena</h2>
+  </div>
+  <div class="gallery-grid">
+    <div class="gallery-item">
+      <div class="gallery-bg g1">🌌</div>
+      <div class="gallery-overlay"><p class="gallery-prompt">Cosmic nebula with vibrant colors</p></div>
+    </div>
+    <div class="gallery-item">
+      <div class="gallery-bg g2">🌺</div>
+      <div class="gallery-overlay"><p class="gallery-prompt">Dreamy floral portrait, soft light</p></div>
+    </div>
+    <div class="gallery-item">
+      <div class="gallery-bg g3">🌊</div>
+      <div class="gallery-overlay"><p class="gallery-prompt">Ocean waves at golden hour, hyper realistic</p></div>
+    </div>
+    <div class="gallery-item">
+      <div class="gallery-bg g4">🌿</div>
+      <div class="gallery-overlay"><p class="gallery-prompt">Enchanted forest, emerald green</p></div>
+    </div>
+    <div class="gallery-item">
+      <div class="gallery-bg g5">🦋</div>
+      <div class="gallery-overlay"><p class="gallery-prompt">Butterfly garden, warm sunset tones</p></div>
+    </div>
+    <div class="gallery-item">
+      <div class="gallery-bg g6">🌙</div>
+      <div class="gallery-overlay"><p class="gallery-prompt">Moonlit castle, fantasy art style</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-box">
+    <h2>Ready to Create? ✨</h2>
+    <p>Join thousands of creators turning their imagination into stunning visuals — completely free.</p>
+    <a href="https://huggingface.co/spaces/Sadikaydin/AiSerena1" target="_blank" class="btn-primary">Try AiSerena Free →</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">AiSerena</div>
+  <ul class="footer-links">
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="https://huggingface.co/spaces/Sadikaydin/AiSerena1" target="_blank">Try Now</a></li>
+  </ul>
+  <p class="footer-copy">© 2026 AiSerena. Powered by AI.</p>
+</footer>
+
+</body>
+</html>
